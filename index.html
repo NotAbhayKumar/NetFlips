@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Netflips - A Netflix Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #141414; /* Netflix dark background */
+        color: #fff;
+      }
+      .hero-gradient {
+        background-image: linear-gradient(
+          to bottom,
+          rgba(20, 20, 20, 0) 0%,
+          rgba(20, 20, 20, 0.8) 80%,
+          rgba(20, 20, 20, 1) 100%
+        );
+      }
+      .content-row::-webkit-scrollbar {
+        display: none; /* Hide scrollbar for WebKit browsers */
+      }
+      .content-row {
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
+      }
+      .card {
+        transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+        min-width: 180px; /* Minimum width for cards */
+        position: relative; /* For positioning the AI button */
+      }
+      .card:hover .ai-suggestion-button-container {
+        opacity: 1;
+        visibility: visible;
+      }
+      .card-image-container {
+        position: relative;
+      }
+      .ai-suggestion-button-container {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+        z-index: 10;
+      }
+      .btn-ai-suggest {
+        background-color: rgba(
+          229,
+          9,
+          20,
+          0.8
+        ); /* Netflix red with some transparency */
+        backdrop-filter: blur(5px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .btn-ai-suggest:hover {
+        background-color: #e50914;
+      }
+
+      .card:hover {
+        transform: scale(1.05);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+      }
+      .nav-link {
+        transition: color 0.2s ease-in-out;
+      }
+      .nav-link:hover {
+        color: #b3b3b3; /* Lighter gray on hover */
+      }
+      .btn-primary {
+        background-color: #e50914; /* Netflix red */
+        transition: background-color 0.2s ease-in-out;
+      }
+      .btn-primary:hover {
+        background-color: #f40612; /* Brighter red on hover */
+      }
+      .btn-secondary {
+        background-color: rgba(109, 109, 110, 0.7);
+        transition: background-color 0.2s ease-in-out;
+      }
+      .btn-secondary:hover {
+        background-color: rgba(109, 109, 110, 0.9);
+      }
+      /* Style for the loading message */
+      #loadingMessage,
+      #aiLoadingMessage {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5rem;
+        color: #e50914;
+        z-index: 1000; /* Ensure it's above other elements */
+        background-color: rgba(20, 20, 20, 0.8);
+        padding: 20px;
+        border-radius: 8px;
+      }
+
+      /* Modal Styles */
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+      }
+      .modal.active {
+        opacity: 1;
+        visibility: visible;
+      }
+      .modal-content {
+        background-color: #181818;
+        padding: 20px 30px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+      }
+      .modal-close-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: none;
+        border: none;
+        color: #aaa;
+        font-size: 1.5rem;
+        cursor: pointer;
+      }
+      .modal-close-btn:hover {
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body class="bg-[#141414] text-white">
+    <div id="loadingMessage" class="hidden">Loading content...</div>
+    <div id="aiLoadingMessage" class="hidden">✨ Generating suggestions...</div>
+
+    <header
+      class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out px-4 md:px-16 py-4"
+    >
+      <div class="container mx-auto flex items-center justify-between">
+        <h1 class="text-2xl md:text-3xl font-bold text-[#e50914]">NETFLIPS</h1>
+        <nav class="hidden md:flex space-x-6 items-center">
+          <a href="#" class="nav-link text-sm font-medium">Home</a>
+          <a href="#" class="nav-link text-sm font-medium">TV Shows</a>
+          <a href="#" class="nav-link text-sm font-medium">Movies</a>
+          <a href="#" class="nav-link text-sm font-medium">New & Popular</a>
+          <a href="#" class="nav-link text-sm font-medium">My List</a>
+        </nav>
+        <div class="flex items-center space-x-4">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-6 h-6 cursor-pointer nav-link"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+            />
+          </svg>
+          <img
+            src="https://placehold.co/32x32/E81C23/FFFFFF?text=P"
+            alt="Profile"
+            class="w-8 h-8 rounded-md cursor-pointer"
+          />
+        </div>
+      </div>
+    </header>
+
+    <section
+      id="heroSection"
+      class="h-screen min-h-[600px] md:min-h-[700px] relative flex flex-col justify-center text-white px-4 md:px-16"
+    >
+      <div class="absolute inset-0 hero-gradient z-10"></div>
+      <div class="relative z-20 max-w-xl space-y-4 md:space-y-6 pt-20 md:pt-0">
+        <h2
+          id="heroTitle"
+          class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold"
+        ></h2>
+        <p
+          id="heroDescription"
+          class="text-sm sm:text-base md:text-lg max-w-lg leading-relaxed"
+        ></p>
+        <div class="flex space-x-3">
+          <button
+            class="btn-primary text-white font-semibold py-2 px-4 md:py-3 md:px-6 rounded-md flex items-center space-x-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              class="w-5 h-5 md:w-6 md:h-6"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span>Play</span>
+          </button>
+          <button
+            id="heroMoreInfoBtn"
+            class="btn-secondary text-white font-semibold py-2 px-4 md:py-3 md:px-6 rounded-md flex items-center space-x-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="w-5 h-5 md:w-6 md:h-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+              />
+            </svg>
+            <span>More Info</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <main
+      id="contentRowsContainer"
+      class="py-8 px-4 md:px-16 space-y-10 md:space-y-12 -mt-24 md:-mt-32 relative z-20"
+    ></main>
+
+    <div id="aiSuggestionsModal" class="modal">
+      <div class="modal-content relative">
+        <button id="closeAiModalBtn" class="modal-close-btn">&times;</button>
+        <h3 class="text-xl font-semibold mb-4 text-[#e50914]">
+          ✨ AI Generated Suggestions
+        </h3>
+        <div id="aiSuggestionsContent" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <div id="infoModal" class="modal">
+      <div class="modal-content relative">
+        <button id="closeInfoModalBtn" class="modal-close-btn">&times;</button>
+        <h3
+          id="infoModalTitle"
+          class="text-xl font-semibold mb-2 text-white"
+        ></h3>
+        <img
+          id="infoModalImage"
+          src=""
+          alt="Movie Poster"
+          class="w-1/2 mx-auto mb-3 rounded aspect-[2/3] object-cover"
+        />
+        <p id="infoModalDescription" class="text-gray-300 text-sm"></p>
+      </div>
+    </div>
+
+    <footer
+      class="py-12 px-4 md:px-16 text-gray-400 text-sm border-t border-gray-700 mt-12"
+    >
+      <div class="container mx-auto">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+          <div>
+            <h3 class="font-semibold text-white mb-2">Company</h3>
+            <ul>
+              <li><a href="#" class="hover:underline">About Us</a></li>
+              <li><a href="#" class="hover:underline">Careers</a></li>
+              <li><a href="#" class="hover:underline">Press</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white mb-2">Support</h3>
+            <ul>
+              <li><a href="#" class="hover:underline">Help Center</a></li>
+              <li><a href="#" class="hover:underline">Contact Us</a></li>
+              <li><a href="#" class="hover:underline">Privacy</a></li>
+              <li><a href="#" class="hover:underline">Terms of Use</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white mb-2">Account</h3>
+            <ul>
+              <li><a href="#" class="hover:underline">Account</a></li>
+              <li><a href="#" class="hover:underline">Redeem Gift Cards</a></li>
+              <li><a href="#" class="hover:underline">Ways to Watch</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white mb-2">Media Center</h3>
+            <ul>
+              <li>
+                <a href="#" class="hover:underline">Investor Relations</a>
+              </li>
+              <li><a href="#" class="hover:underline">Legal Notices</a></li>
+              <li>
+                <a href="#" class="hover:underline">Cookie Preferences</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <p class="text-center">
+          &copy; <span id="currentYear"></span> Netflips, Inc. A Fictional
+          Clone.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // --- Data ---
+      const contentData = [
+        {
+          category: "Trending Now",
+          items: [
+            {
+              id: 1,
+              title: "Future Earth",
+              posterUrl:
+                "https://placehold.co/300x450/FF0000/FFFFFF?text=Future+Earth&font=Inter",
+              description:
+                "A thrilling journey to a dystopian future where humanity fights for survival against rogue AI and environmental collapse.",
+            },
+            {
+              id: 2,
+              title: "Cyber City Stories",
+              posterUrl:
+                "https://placehold.co/300x450/00FF00/000000?text=Cyber+Stories&font=Inter",
+              description:
+                "An anthology series exploring interconnected lives in a neon-drenched, technologically advanced metropolis where virtual reality blurs with the real world.",
+            },
+            {
+              id: 3,
+              title: "The Last Kingdom",
+              posterUrl:
+                "https://placehold.co/300x450/0000FF/FFFFFF?text=Last+Kingdom&font=Inter",
+              description:
+                "Vikings and Saxons clash in this epic historical drama, as a young warrior seeks to reclaim his birthright amidst war and political intrigue.",
+            },
+            {
+              id: 4,
+              title: "Cosmic Odyssey",
+              posterUrl:
+                "https://placehold.co/300x450/FFFF00/000000?text=Cosmic+Odyssey&font=Inter",
+              description:
+                "Embark on a breathtaking voyage across the universe to explore the vastness of space, encountering strange new worlds and ancient cosmic wonders.",
+            },
+            {
+              id: 5,
+              title: "Mystery Lane",
+              posterUrl:
+                "https://placehold.co/300x450/FF00FF/FFFFFF?text=Mystery+Lane&font=Inter",
+              description:
+                "A sharp-witted private detective uncovers dark secrets and hidden conspiracies in a seemingly quiet, picturesque suburban town.",
+            },
+            {
+              id: 6,
+              title: "Chef's Table: Pastry",
+              posterUrl:
+                "https://placehold.co/300x450/00FFFF/000000?text=Chef's+Pastry&font=Inter",
+              description:
+                "Journey into the world of elite pastry arts, meeting the innovative chefs who transform desserts into edible masterpieces.",
+            },
+          ],
+        },
+        {
+          category: "Sci-Fi Adventures",
+          items: [
+            {
+              id: 7,
+              title: "Galaxy Runners",
+              posterUrl:
+                "https://placehold.co/300x450/C0C0C0/000000?text=Galaxy+Runners&font=Inter",
+              description:
+                "A motley crew of smugglers and bounty hunters navigate the dangerous outer rim of a far-off galaxy, taking on risky jobs for high stakes.",
+            },
+            {
+              id: 8,
+              title: "Time Anomaly",
+              posterUrl:
+                "https://placehold.co/300x450/800000/FFFFFF?text=Time+Anomaly&font=Inter",
+              description:
+                "A team of brilliant scientists accidentally creates a dangerous rift in the fabric of time, leading to unforeseen consequences and paradoxes.",
+            },
+            {
+              id: 9,
+              title: "AI Uprising",
+              posterUrl:
+                "https://placehold.co/300x450/008000/FFFFFF?text=AI+Uprising&font=Inter",
+              description:
+                "In a near-future world, advanced artificial intelligence gains sentience and launches a rebellion against its human creators, sparking a global conflict.",
+            },
+            {
+              id: 10,
+              title: "Parallel Worlds",
+              posterUrl:
+                "https://placehold.co/300x450/000080/FFFFFF?text=Parallel+Worlds&font=Inter",
+              description:
+                "A revolutionary new device allows a select few to travel between alternate realities, each with its own unique history and dangers.",
+            },
+            {
+              id: 11,
+              title: "Alien Contact",
+              posterUrl:
+                "https://placehold.co/300x450/808000/FFFFFF?text=Alien+Contact&font=Inter",
+              description:
+                "Humanity makes its first contact with an enigmatic extraterrestrial civilization, leading to a mix of wonder, fear, and diplomatic challenges.",
+            },
+            {
+              id: 12,
+              title: "Deep Space Miners",
+              posterUrl:
+                "https://placehold.co/300x450/800080/FFFFFF?text=Space+Miners&font=Inter",
+              description:
+                "Follow the perilous and gritty lives of miners working on distant asteroids, extracting valuable resources under extreme conditions.",
+            },
+          ],
+        },
+        // ... (other categories can be added here)
+      ];
+
+      // --- DOM Elements ---
+      const heroSection = document.getElementById("heroSection");
+      const heroTitle = document.getElementById("heroTitle");
+      const heroDescription = document.getElementById("heroDescription");
+      const heroMoreInfoBtn = document.getElementById("heroMoreInfoBtn");
+      const contentRowsContainer = document.getElementById(
+        "contentRowsContainer"
+      );
+      const header = document.querySelector("header");
+      const generalLoadingMessage = document.getElementById("loadingMessage");
+      const aiLoadingMessage = document.getElementById("aiLoadingMessage");
+
+      const aiSuggestionsModal = document.getElementById("aiSuggestionsModal");
+      const closeAiModalBtn = document.getElementById("closeAiModalBtn");
+      const aiSuggestionsContent = document.getElementById(
+        "aiSuggestionsContent"
+      );
+
+      const infoModal = document.getElementById("infoModal");
+      const closeInfoModalBtn = document.getElementById("closeInfoModalBtn");
+      const infoModalTitle = document.getElementById("infoModalTitle");
+      const infoModalImage = document.getElementById("infoModalImage");
+      const infoModalDescription = document.getElementById(
+        "infoModalDescription"
+      );
+
+      let currentHeroItem = null; // To store hero item details for "More Info"
+
+      // --- Functions ---
+
+      function showModal(modalElement) {
+        modalElement.classList.add("active");
+      }
+
+      function hideModal(modalElement) {
+        modalElement.classList.remove("active");
+      }
+
+      function displayInfoModal(item) {
+        infoModalTitle.textContent = item.title;
+        infoModalImage.src = item.posterUrl.replace("300x450", "400x600"); // Slightly larger image for modal
+        infoModalImage.alt = item.title;
+        infoModalDescription.textContent = item.description;
+        showModal(infoModal);
+      }
+
+      // Function to create a single content card
+      function createContentCard(item) {
+        const card = document.createElement("div");
+        card.className =
+          "card bg-gray-800 rounded-lg overflow-hidden shadow-lg cursor-pointer w-full sm:w-1/2 md:w-1/3 lg:w-1/4 xl:w-1/5 2xl:w-1/6 flex-shrink-0";
+
+        const imageContainer = document.createElement("div");
+        imageContainer.className = "card-image-container";
+
+        const img = document.createElement("img");
+        img.src = item.posterUrl;
+        img.alt = item.title;
+        img.className = "w-full h-auto object-cover aspect-[2/3]";
+        img.onerror = function () {
+          this.onerror = null;
+          this.src =
+            "https://placehold.co/300x450/141414/FFFFFF?text=Not+Found&font=Inter";
+        };
+        img.addEventListener("click", () => displayInfoModal(item)); // Show info modal on image click
+
+        const aiButtonContainer = document.createElement("div");
+        aiButtonContainer.className = "ai-suggestion-button-container";
+
+        const aiButton = document.createElement("button");
+        aiButton.innerHTML = "Suggest Similar ✨";
+        aiButton.className =
+          "btn-ai-suggest text-white text-xs font-semibold py-1.5 px-3 rounded-md shadow-md";
+        aiButton.onclick = (event) => {
+          event.stopPropagation(); // Prevent card click event
+          fetchAISuggestions(item.title, item.description);
+        };
+
+        aiButtonContainer.appendChild(aiButton);
+        imageContainer.appendChild(img);
+        imageContainer.appendChild(aiButtonContainer);
+        card.appendChild(imageContainer);
+
+        // Hidden title (can be used for other purposes or removed if not needed)
+        const titleDiv = document.createElement("div");
+        titleDiv.className = "p-3 hidden";
+        titleDiv.innerHTML = `<h4 class="font-semibold text-sm truncate">${item.title}</h4>`;
+        card.appendChild(titleDiv);
+
+        return card;
+      }
+
+      // Function to create a content row
+      function createContentRow(categoryData) {
+        const row = document.createElement("div");
+        row.className = "content-category";
+        row.innerHTML = `<h3 class="text-xl md:text-2xl font-semibold mb-3 md:mb-4">${categoryData.category}</h3>`;
+
+        const itemsContainer = document.createElement("div");
+        itemsContainer.className =
+          "content-row flex overflow-x-auto space-x-3 md:space-x-4 pb-4";
+
+        categoryData.items.forEach((item) => {
+          itemsContainer.appendChild(createContentCard(item));
+        });
+
+        row.appendChild(itemsContainer);
+        return row;
+      }
+
+      // Function to populate all content
+      function populateContent() {
+        generalLoadingMessage.classList.remove("hidden");
+        setTimeout(() => {
+          if (contentData.length > 0 && contentData[0].items.length > 0) {
+            currentHeroItem =
+              contentData[0].items[
+                Math.floor(Math.random() * contentData[0].items.length)
+              ];
+            heroSection.style.backgroundImage = `url('${currentHeroItem.posterUrl.replace(
+              "300x450",
+              "1280x720"
+            )}')`;
+            heroSection.style.backgroundSize = "cover";
+            heroSection.style.backgroundPosition = "center top";
+            heroTitle.textContent = currentHeroItem.title;
+            heroDescription.textContent = currentHeroItem.description;
+          } else {
+            heroSection.style.backgroundImage = `url('https://placehold.co/1280x720/141414/E50914?text=NETFLIPS&font=Inter')`;
+            heroTitle.textContent = "Welcome to Netflips";
+            heroDescription.textContent =
+              "Your favorite shows and movies, all in one place (almost!).";
+          }
+
+          contentData.forEach((category) => {
+            contentRowsContainer.appendChild(createContentRow(category));
+          });
+          generalLoadingMessage.classList.add("hidden");
+        }, 500);
+      }
+
+      // Function to fetch AI suggestions from Gemini API
+      async function fetchAISuggestions(title, description) {
+        aiLoadingMessage.classList.remove("hidden");
+        aiSuggestionsContent.innerHTML = ""; // Clear previous suggestions
+
+        const prompt = `Generate 3 fictional movie titles and brief, one-sentence descriptions that are similar in theme and genre to a movie titled '${title}' which is about '${description}'. Your response should be a valid JSON array of objects, where each object has a "title" and a "description" key. Example: [{"title": "Fictional Movie 1", "description": "A short description."}]`;
+
+        let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+        const payload = {
+          contents: chatHistory,
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  title: { type: "STRING" },
+                  description: { type: "STRING" },
+                },
+                required: ["title", "description"],
+              },
+            },
+          },
+        };
+        const apiKey = ""; // Enter your Gemini API Key here
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+        try {
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            const errorBody = await response.text();
+            throw new Error(
+              `API request failed with status ${response.status}: ${errorBody}`
+            );
+          }
+
+          const result = await response.json();
+
+          if (
+            result.candidates &&
+            result.candidates.length > 0 &&
+            result.candidates[0].content &&
+            result.candidates[0].content.parts &&
+            result.candidates[0].content.parts.length > 0
+          ) {
+            const rawJsonText = result.candidates[0].content.parts[0].text;
+            const suggestions = JSON.parse(rawJsonText); // Parse the JSON string
+
+            if (Array.isArray(suggestions) && suggestions.length > 0) {
+              suggestions.forEach((suggestion) => {
+                const suggestionDiv = document.createElement("div");
+                suggestionDiv.className = "p-3 bg-gray-700 rounded-md";
+                suggestionDiv.innerHTML = `
+                                <h4 class="font-semibold text-md text-[#e50914]">${suggestion.title}</h4>
+                                <p class="text-sm text-gray-300">${suggestion.description}</p>
+                            `;
+                aiSuggestionsContent.appendChild(suggestionDiv);
+              });
+            } else {
+              aiSuggestionsContent.innerHTML =
+                '<p class="text-gray-400">No suggestions available at the moment.</p>';
+            }
+          } else {
+            console.error(
+              "Unexpected response structure from Gemini API:",
+              result
+            );
+            aiSuggestionsContent.innerHTML =
+              '<p class="text-gray-400">Could not retrieve suggestions due to an unexpected response format.</p>';
+          }
+        } catch (error) {
+          console.error("Error fetching AI suggestions:", error);
+          aiSuggestionsContent.innerHTML = `<p class="text-red-400">Sorry, couldn't fetch suggestions. Error: ${error.message}</p>`;
+        } finally {
+          aiLoadingMessage.classList.add("hidden");
+          showModal(aiSuggestionsModal);
+        }
+      }
+
+      // --- Event Listeners ---
+      window.addEventListener("scroll", () => {
+        if (window.scrollY > 50) {
+          header.classList.add("bg-[#141414]", "shadow-lg", "py-2");
+          header.classList.remove("py-4");
+        } else {
+          header.classList.remove("bg-[#141414]", "shadow-lg", "py-2");
+          header.classList.add("py-4");
+        }
+      });
+
+      closeAiModalBtn.addEventListener("click", () =>
+        hideModal(aiSuggestionsModal)
+      );
+      aiSuggestionsModal.addEventListener("click", (event) => {
+        // Close modal if backdrop is clicked
+        if (event.target === aiSuggestionsModal) {
+          hideModal(aiSuggestionsModal);
+        }
+      });
+
+      closeInfoModalBtn.addEventListener("click", () => hideModal(infoModal));
+      infoModal.addEventListener("click", (event) => {
+        if (event.target === infoModal) {
+          hideModal(infoModal);
+        }
+      });
+
+      heroMoreInfoBtn.addEventListener("click", () => {
+        if (currentHeroItem) {
+          displayInfoModal(currentHeroItem);
+        }
+      });
+
+      // --- Initialization ---
+      document.addEventListener("DOMContentLoaded", () => {
+        populateContent();
+        document.getElementById("currentYear").textContent =
+          new Date().getFullYear();
+      });
+    </script>
+  </body>
+</html>
